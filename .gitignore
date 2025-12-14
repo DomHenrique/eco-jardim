@@ -100,3 +100,6 @@ yarn-error.log*
 !Dockerfile
 !docker-compose.yml
 !.dockerignore
+
+# Scripts
+scripts/
