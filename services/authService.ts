@@ -18,34 +18,11 @@ export interface AuthUser {
 }
 
 /**
- * Validate admin token from environment
- * @param token The token to validate
- * @returns true if token is valid, false otherwise
- */
-export const validateAdminToken = (token: string): boolean => {
-  const adminToken = import.meta.env.VITE_ADMIN_TOKEN;
-  
-  if (!adminToken) {
-    log.warn('Admin token not configured in environment');
-    return false;
-  }
-  
-  const isValid = token === adminToken && token.trim() !== '';
-  
-  if (!isValid) {
-    log.warn('Invalid admin token attempt');
-  }
-  
-  return isValid;
-};
-
-/**
  * Sign up a new user
  * @param name User's name
  * @param email User's email
  * @param password User's password
- * @param role User's role (optional, defaults to 'customer'). For 'employee' or 'admin', adminToken is required
- * @param adminToken Admin token for creating employee/admin accounts (required if role is not 'customer')
+ * @param role User's role (optional, defaults to 'customer').
  */
 export const signUp = async (
   name: string,
@@ -59,19 +36,6 @@ export const signUp = async (
     
     // Determine user role - default to 'customer'
     const userRole = role || 'customer';
-    
-    // Validate admin token if trying to create employee or admin
-    if ((userRole === 'employee' || userRole === 'admin') && !adminToken) {
-      const error = 'Token administrativo obrigatório para criar usuário de funcionário';
-      log.warn('Signup attempt without admin token for role:', userRole);
-      return { success: false, error };
-    }
-    
-    if ((userRole === 'employee' || userRole === 'admin') && !validateAdminToken(adminToken!)) {
-      const error = 'Token administrativo inválido';
-      log.warn('Signup attempt with invalid admin token for role:', userRole);
-      return { success: false, error };
-    }
     
     // 1. Sign up with Supabase Auth
     const { data, error } = await supabase.auth.signUp({
@@ -166,37 +130,40 @@ export const signUp = async (
 
 export const loginWithEmail = async (email: string, password: string): Promise<ApiResponse<AuthUser>> => {
   try {
-    log.log('Starting login for:', maskEmail(email));
+    log.log('Starting login process for:', maskEmail(email)); // Updated message
+
+    log.debug('Attempting signInWithPassword with Supabase Auth...'); // Added debug log
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
+    log.debug('signInWithPassword call returned.'); // Added debug log
+
     if (error) {
-      log.error('Supabase auth error:', error);
+      log.error('Supabase authentication failed:', error.message); // Updated error log message
       // Check for specific error codes that might inform the user
       if (error.message.includes('email not confirmed') || error.status === 400) {
-        // This might indicate email confirmation is required
         return {
           success: false,
-          error: 'Por favor, confirme seu email antes de fazer login. Se você não recebeu o email de confirmação, verifique sua caixa de spam ou entre em contato conosco.'
+          error: 'Por favor, confirme seu email antes de fazer login. Verifique sua caixa de spam ou entre em contato conosco se o problema persistir.'
         };
       }
       errorHandler.handle(error, 'authService.loginWithEmail');
-      return { success: false, error: errorHandler.getUserMessage(error) };
+      return { success: false, error: errorHandler.getUserMessage(error) || 'Falha na autenticação. Verifique suas credenciais.' }; // Enhanced generic auth failure message
     }
 
     if (!data.user) {
-      const error = new Error('No user returned');
+      const error = new Error('No user returned after successful authentication'); // Updated error message
       errorHandler.handle(error, 'authService.loginWithEmail');
-      return { success: false, error: 'Usuário não encontrado' };
+      return { success: false, error: 'Usuário não encontrado ou problema interno no servidor.' }; // Enhanced user-friendly message
     }
 
-    log.log('Auth successful, user ID:', maskId(data.user.id));
+    log.log('Supabase authentication successful, user ID:', maskId(data.user.id));
 
     // Fetch role and name from public.users table
-    log.log('Fetching user data from public.users...');
+    log.debug('Fetching user data from public.users with auth_user_id:', data.user.id);
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('id, role, name')
@@ -205,19 +172,17 @@ export const loginWithEmail = async (email: string, password: string): Promise<A
 
     if (userError) {
       log.error('Error fetching user data from public.users:', userError);
+      // This could be an RLS policy issue.
       errorHandler.handle(userError, 'authService.loginWithEmail.fetchUserData');
-      // Don't fail login if we can't fetch user data, use defaults
-      const authUser: AuthUser = {
-        id: data.user.id,
-        dbId: undefined,
-        email: data.user.email || email,
-        role: 'customer',
-        name: data.user.email?.split('@')[0]
-      };
-      return { success: true, data: authUser };
+      return { success: false, error: 'Falha ao carregar dados do perfil do usuário. Verifique as permissões do banco de dados (RLS).' };
     }
 
-    log.log('User data fetched successfully');
+    if (!userData) {
+      log.warn('No user record found in public.users for auth_user_id:', data.user.id);
+      return { success: false, error: 'Perfil de usuário não encontrado. Entre em contato com o suporte.' };
+    }
+    
+    log.debug('User data from public.users fetched successfully:', userData);
 
     const authUser: AuthUser = {
       id: data.user.id,
@@ -229,7 +194,8 @@ export const loginWithEmail = async (email: string, password: string): Promise<A
 
     if (authUser.dbId) {
       try {
-        await loggerService.logLogin(authUser.dbId);
+        // Do not await this call. Let it run in the background.
+        loggerService.logLogin(authUser.dbId);
       } catch (logError) {
         errorHandler.handle(logError as Error, 'authService.loginWithEmail.logActivity');
       }
@@ -237,10 +203,11 @@ export const loginWithEmail = async (email: string, password: string): Promise<A
 
     return { success: true, data: authUser };
   } catch (err) {
-    log.error('Unexpected error during login:', err);
+    log.error('An unexpected error occurred during the login process:', err); // Updated error log message
+    // Provide a more user-friendly error message for unexpected errors
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Erro desconhecido',
+      error: 'Ocorreu um erro inesperado durante o login. Por favor, tente novamente mais tarde ou entre em contato com o suporte.'
     };
   }
 };

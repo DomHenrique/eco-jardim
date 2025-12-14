@@ -193,6 +193,16 @@ const CustomerLogin: React.FC = () => {
             {MESSAGES.login.backHome}
           </button>
         </div>
+
+        {/* Employee Login Link */}
+        <div className="text-center">
+          <Link
+            to="/login"
+            className="text-xs font-medium text-stone-500 transition-colors hover:text-stone-700"
+          >
+            Acesso de funcionários
+          </Link>
+        </div>
       </div>
     </div>
   );

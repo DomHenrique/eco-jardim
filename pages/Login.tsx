@@ -5,7 +5,7 @@ import { Lock, Mail, LogIn, AlertCircle } from 'lucide-react';
 import { COLORS, MESSAGES } from '../config';
 
 const Login: React.FC = () => {
-  const { login, isAuthenticated, isEmployee } = useStore();
+  const { login, isAuthenticated, isEmployee, logout } = useStore();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +34,8 @@ const Login: React.FC = () => {
         if (result.data?.role === 'employee' || result.data?.role === 'admin') {
             navigate('/admin');
         } else {
-            navigate('/');
+            setError('Acesso negado. Esta área é restrita para funcionários.');
+            logout();
         }
       } else {
         setError(result.error || 'Falha no login. Verifique suas credenciais.');

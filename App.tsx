@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import CustomerLogin from './pages/CustomerLogin';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import Simulador from './pages/Simulador';
 import Assistant from './components/Assistant';
 
 const App: React.FC = () => {
@@ -29,6 +30,7 @@ const App: React.FC = () => {
               <Route path="/entrar" element={<CustomerLogin />} />
               <Route path="/cadastro" element={<Register />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/simulador" element={<Simulador />} />
             </Routes>
           </main>
           <Assistant />

@@ -51,6 +51,14 @@ const Navbar: React.FC = () => {
             >
               {MESSAGES.navigation.shop}
             </Link>
+
+            <Link 
+              to="/simulador" 
+              className={navClass('/simulador')} 
+              style={{ color: COLORS.primary[100] }}
+            >
+              Simulador IA
+            </Link>
             
             {isAuthenticated && isEmployee && (
               <Link 
@@ -148,6 +156,16 @@ const Navbar: React.FC = () => {
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               {MESSAGES.navigation.shop}
+            </Link>
+
+             <Link 
+              to="/simulador" 
+              onClick={() => setIsOpen(false)} 
+              className="block px-3 py-2 rounded-md text-white transition-colors"
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = COLORS.primary[700])}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              Simulador IA
             </Link>
             
              {isAuthenticated && isEmployee && (

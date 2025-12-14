@@ -20,8 +20,9 @@ interface StoreContextType {
   isAuthenticated: boolean;
   isEmployee: boolean;
   login: (email: string, password: string) => Promise<ApiResponse<AuthUser>>;
-  signUp: (name: string, email: string, password: string, role?: string, adminToken?: string) => Promise<ApiResponse<AuthUser>>;
+  signUp: (name: string, email: string, password: string, role?: string) => Promise<ApiResponse<AuthUser>>;
   logout: () => Promise<void>;
+  isLoadingAuth: boolean;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -130,7 +131,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   // Load initial state
   useEffect(() => {
@@ -153,7 +154,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCurrentUser(user);
       }
       
-      setLoading(false);
+      setIsLoadingAuth(false);
     };
 
     loadState();
@@ -190,10 +191,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     };
     // Only run if not loading initially to prevent race conditions with initial cart load
-    if (!loading) {
+    if (!isLoadingAuth) {
       syncCart();
     }
-  }, [currentUser?.dbId, loading]); // Run when user ID changes (login/logout) or after initial loading
+  }, [currentUser?.dbId, isLoadingAuth]); // Run when user ID changes (login/logout) or after initial loading
 
   // Save cart to localStorage and DB whenever it changes
   useEffect(() => {
@@ -257,8 +258,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return result;
   };
 
-  const signUp = async (name: string, email: string, password: string, role?: string, adminToken?: string): Promise<ApiResponse<AuthUser>> => {
-    const result = await authSignUp(name, email, password, role, adminToken);
+  const signUp = async (name: string, email: string, password: string, role?: string): Promise<ApiResponse<AuthUser>> => {
+    const result = await authSignUp(name, email, password, role);
     if (result.success && result.data) {
       setCurrentUser(result.data);
     }
@@ -293,7 +294,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isEmployee,
       login,
       signUp,
-      logout
+      logout,
+      isLoadingAuth
     }}>
       {children}
     </StoreContext.Provider>

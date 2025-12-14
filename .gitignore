@@ -91,3 +91,12 @@ yarn-error.log*
 
 # Except for README.md
 !README.md
+
+# Ignore Docker files
+*docker*
+*Docker*
+
+# But keep some important ones
+!Dockerfile
+!docker-compose.yml
+!.dockerignore
